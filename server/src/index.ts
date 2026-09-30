@@ -1,4 +1,5 @@
 import express, { Request, Response } from "express";
+import { Server } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { InMemoryPhotoIndex, InMemoryPhotoStorage } from "./photo-storage.js";
@@ -10,7 +11,9 @@ const defaultPort = 3001;
 /** Converts the optional environment port into a safe listen port. */
 function readPort(value: string | undefined): number {
   const parsedPort = Number(value);
-  return Number.isInteger(parsedPort) && parsedPort > 0 ? parsedPort : defaultPort;
+  return Number.isInteger(parsedPort) && parsedPort > 0
+    ? parsedPort
+    : defaultPort;
 }
 const port = readPort(process.env.PORT);
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -72,10 +75,16 @@ app.get("/{*path}", (_request: Request, response: Response): void => {
   response.sendFile(path.join(clientBuildDirectory, "index.html"));
 });
 
-/** Starts the local HTTP server. */
-function startServer(): void {
-  app.listen(port, (): void => {
+/** Starts and explicitly retains the local HTTP server process. */
+function startServer(): Server {
+  const server = app.listen(port, (): void => {
     console.log(`Gallery API listening on port ${port}`);
   });
+  server.on("error", (error: Error): void => {
+    console.error("Gallery API could not start:", error.message);
+  });
+  server.ref();
+  return server;
 }
-startServer();
+const server = startServer();
+void server;

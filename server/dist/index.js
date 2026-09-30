@@ -8,7 +8,9 @@ const defaultPort = 3001;
 /** Converts the optional environment port into a safe listen port. */
 function readPort(value) {
     const parsedPort = Number(value);
-    return Number.isInteger(parsedPort) && parsedPort > 0 ? parsedPort : defaultPort;
+    return Number.isInteger(parsedPort) && parsedPort > 0
+        ? parsedPort
+        : defaultPort;
 }
 const port = readPort(process.env.PORT);
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -54,10 +56,16 @@ app.use(express.static(clientBuildDirectory));
 app.get("/{*path}", (_request, response) => {
     response.sendFile(path.join(clientBuildDirectory, "index.html"));
 });
-/** Starts the local HTTP server. */
+/** Starts and explicitly retains the local HTTP server process. */
 function startServer() {
-    app.listen(port, () => {
+    const server = app.listen(port, () => {
         console.log(`Gallery API listening on port ${port}`);
     });
+    server.on("error", (error) => {
+        console.error("Gallery API could not start:", error.message);
+    });
+    server.ref();
+    return server;
 }
-startServer();
+const server = startServer();
+void server;
