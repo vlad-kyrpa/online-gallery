@@ -39,6 +39,8 @@ Images are held only in memory. Restarting the server clears the gallery.
 
 ## Development
 
+Use Node.js 22 LTS. With `nvm`, run `nvm use` from the repository root; the required version is recorded in `.nvmrc`.
+
 Install dependencies once for each application:
 
 ```bash
@@ -75,6 +77,8 @@ npm start
 ```
 
 Open `http://localhost:3001`. Express serves the compiled React app from `client/build` and handles API requests under `/api/photos`.
+
+The client production build disables source-map generation and the unused Create React App ESLint worker to keep memory use low on small servers.
 
 The port is configured in `server/.env`:
 
