@@ -1,10 +1,23 @@
 import express, { Request, Response } from "express";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { InMemoryPhotoIndex, InMemoryPhotoStorage } from "./photo-storage.js";
 import { PhotoService } from "./photo-service.js";
 import { CreatePhotoInput } from "./types.js";
 
 const apiPrefix = "/api/photos";
-const port = 3001;
+const defaultPort = 3001;
+/** Converts the optional environment port into a safe listen port. */
+function readPort(value: string | undefined): number {
+  const parsedPort = Number(value);
+  return Number.isInteger(parsedPort) && parsedPort > 0 ? parsedPort : defaultPort;
+}
+const port = readPort(process.env.PORT);
+const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
+const clientBuildDirectory = path.resolve(
+  currentDirectory,
+  "../../client/build",
+);
 const service = new PhotoService({
   createId: (): string => crypto.randomUUID(),
   index: new InMemoryPhotoIndex(),
@@ -39,11 +52,9 @@ app.post(
     try {
       response.status(201).json(service.create(request.body));
     } catch (error: unknown) {
-      response
-        .status(400)
-        .json({
-          message: error instanceof Error ? error.message : "Invalid photo.",
-        });
+      response.status(400).json({
+        message: error instanceof Error ? error.message : "Invalid photo.",
+      });
     }
   },
 );
@@ -54,6 +65,12 @@ app.delete(
     response.sendStatus(service.delete(request.params.id) ? 204 : 404);
   },
 );
+/** Serves the compiled client after API routes have been considered. */
+app.use(express.static(clientBuildDirectory));
+/** Returns the client shell for browser routes handled by React. */
+app.get("/{*path}", (_request: Request, response: Response): void => {
+  response.sendFile(path.join(clientBuildDirectory, "index.html"));
+});
 
 /** Starts the local HTTP server. */
 function startServer(): void {
