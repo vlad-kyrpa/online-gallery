@@ -1,0 +1,13 @@
+services:
+  online-gallery:
+    container_name: online-gallery
+    environment:
+      PORT: "8080"
+      AWS_S3_BUCKET_NAME: "online-gallery-s3"
+      AWS_S3_KEY_PREFIX: "photos"
+      AWS_S3_REGION: "eu-north-1"
+    image: quoterlock/online-gallery:latest
+    ports:
+      - "8080:8080"
+    pull_policy: always
+    restart: unless-stopped

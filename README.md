@@ -2,47 +2,13 @@
 
 A small full-stack image gallery study project. Upload an image, give it a title, search the gallery, and delete images when they are no longer needed.
 
-## Features
-
-- Responsive photo-card grid
-- Search photos by title
-- Upload images with an immediate preview
-- Server-side image compression to WebP, capped at 512×512 pixels
-- Delete photos
-- Backend-powered list, create, delete, and get-by-ID operations
-
-## Architecture
-
-The React client is organized by responsibility:
-
-- `client/src/api` contains HTTP calls.
-- `client/src/components` contains shared UI elements.
-- `client/src/features` contains gallery and upload views.
-- `client/src/utils` contains file conversion utilities.
-- `client/src/types.ts` contains shared client domain types.
-
-The Express server has separate concerns:
-
-- `PhotoService` coordinates use cases.
-- `InMemoryPhotoIndex` keeps photo metadata (`id` and `title`) in a map.
-- `InMemoryPhotoStorage` stores associated image data separately by photo ID for local development.
-- `S3PhotoStorage` persists image objects in a private S3 or S3-compatible bucket when configured.
-
-Without bucket configuration, images are held only in memory and restarting the server clears the gallery. Metadata is currently in-memory in every mode, so an S3-backed image becomes inaccessible from the gallery after a server restart until a persistent metadata index is added.
-
-## API
-
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/photos` | List all photos |
-| `GET` | `/api/photos/:id` | Get one photo's metadata and image-asset URL |
-| `GET` | `/api/photos/:id/image` | Get the image as its native binary asset |
-| `POST` | `/api/photos` | Create a photo with `title` and `imageUrl` |
-| `DELETE` | `/api/photos/:id` | Delete a photo |
-
 ## Development
 
-Use Node.js 22 LTS. With `nvm`, run `nvm use` from the repository root; the required version is recorded in `.nvmrc`.
+Use node from `.nvmrc`
+
+```
+nvm use
+```
 
 Install dependencies once for each application:
 
@@ -90,6 +56,47 @@ PORT=3001
 ```
 
 Copy `server/.env.example` when setting up another environment, then choose the required port.
+
+## Docker
+
+Build from the repository root. The Dockerfile lives in `server/`, while the repository root remains the build context so both the React client and Express server are available to the build.
+
+```bash
+docker build --file server/Dockerfile --tag online-gallery:latest .
+```
+
+### Push the private Docker Hub image
+
+Run these commands from your development machine or CI, not from the EC2 deployment instance.
+
+```bash
+docker login --username quoterlock
+docker build --file server/Dockerfile --tag quoterlock/online-gallery:latest .
+docker push quoterlock/online-gallery:latest
+```
+
+Use a version tag as well as `latest` when you need a reproducible deployment or rollback target:
+
+```bash
+docker build --file server/Dockerfile --tag quoterlock/online-gallery:v1.0.0 .
+docker push quoterlock/online-gallery:v1.0.0
+```
+
+The image excludes `.env` files. Supply configuration at runtime; on EC2, use `docker-compose.yaml` to provide the non-secret `AWS_S3_*` settings and let the attached IAM role supply S3 credentials.
+
+### Run the private Docker Hub image
+
+Authenticate once on the host with a Docker Hub personal access token, then Compose can pull the private image. The token is not placed in this repository or the Compose file.
+
+```bash
+printf '%s' "$DOCKERHUB_TOKEN" | docker login --username quoterlock --password-stdin
+docker compose pull
+docker compose up --detach
+```
+
+`docker-compose.yaml` runs `quoterlock/online-gallery:latest`, publishes port `8080`, restarts it unless stopped explicitly, and provides its non-secret runtime configuration directly.
+
+For the complete EC2 private-image deployment guide, see [EC2_DEPLOY_README.md](EC2_DEPLOY_README.md).
 
 ### S3-compatible image storage
 
