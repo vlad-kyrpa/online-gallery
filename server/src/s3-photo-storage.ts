@@ -89,15 +89,19 @@ export class S3PhotoStorage implements PhotoStorage {
 
   /** Deletes the stored object and treats an absent object as a normal result. */
   public async delete(id: PhotoId): Promise<boolean> {
+    const key = createImageKey({ id, keyPrefix: this.keyPrefix });
+    console.info("[S3] Deleting image", { bucketName: this.bucketName, key });
     try {
       await this.client.send(
         new DeleteObjectCommand({
           Bucket: this.bucketName,
-          Key: createImageKey({ id, keyPrefix: this.keyPrefix }),
+          Key: key,
         }),
       );
+      console.info("[S3] Deleted image", { bucketName: this.bucketName, key });
       return true;
     } catch (error: unknown) {
+      console.error("[S3] Could not delete image", { bucketName: this.bucketName, error, key });
       if (isMissingS3Object(error)) {
         return false;
       }
@@ -107,37 +111,47 @@ export class S3PhotoStorage implements PhotoStorage {
 
   /** Lists stored photo identifiers in the configured key namespace. */
   public async list(): Promise<string[]> {
-    const result = await this.client.send(
-      new ListObjectsV2Command({
-        Bucket: this.bucketName,
-        Prefix: `${this.keyPrefix}/`,
-      }),
-    );
-
-    if (!isListObjectsResult(result)) {
-      throw new Error("S3 returned an invalid object list.");
-    }
-
     const keyPrefix = `${this.keyPrefix}/`;
-    return (result.Contents || []).flatMap((object) => {
-      const key = object.Key;
+    console.info("[S3] Listing images", { bucketName: this.bucketName, keyPrefix });
+    try {
+      const result = await this.client.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucketName,
+          Prefix: keyPrefix,
+        }),
+      );
 
-      if (key === undefined) {
-        console.warn("S3 object does not have a key");
-        return [];
+      if (!isListObjectsResult(result)) {
+        throw new Error("S3 returned an invalid object list.");
       }
 
-      return key.startsWith(keyPrefix) ? [key.slice(keyPrefix.length)] : [];
-    });
+      const photoIds = (result.Contents || []).flatMap((object) => {
+        const key = object.Key;
+
+        if (key === undefined) {
+          console.warn("[S3] Listed object has no key", { bucketName: this.bucketName, keyPrefix });
+          return [];
+        }
+
+        return key.startsWith(keyPrefix) ? [key.slice(keyPrefix.length)] : [];
+      });
+      console.info("[S3] Listed images", { bucketName: this.bucketName, count: photoIds.length, keyPrefix });
+      return photoIds;
+    } catch (error: unknown) {
+      console.error("[S3] Could not list images", { bucketName: this.bucketName, error, keyPrefix });
+      throw error;
+    }
   }
 
   /** Downloads an image as raw bytes and its stored content type. */
   public async read(id: PhotoId): Promise<StoredImage | undefined> {
+    const key = createImageKey({ id, keyPrefix: this.keyPrefix });
+    console.info("[S3] Reading image", { bucketName: this.bucketName, key });
     try {
       const result = await this.client.send(
         new GetObjectCommand({
           Bucket: this.bucketName,
-          Key: createImageKey({ id, keyPrefix: this.keyPrefix }),
+          Key: key,
         }),
       );
 
@@ -148,8 +162,10 @@ export class S3PhotoStorage implements PhotoStorage {
       const imageBytes = await result.Body.transformToByteArray();
       const contentType = result.ContentType || defaultImageContentType;
 
+      console.info("[S3] Read image", { bucketName: this.bucketName, key });
       return { body: imageBytes, contentType };
     } catch (error: unknown) {
+      console.error("[S3] Could not read image", { bucketName: this.bucketName, error, key });
       if (isMissingS3Object(error)) {
         return undefined;
       }
@@ -159,13 +175,21 @@ export class S3PhotoStorage implements PhotoStorage {
 
   /** Uploads an image's raw bytes with its content type preserved for later reads. */
   public async save({ id, image }: SavePhotoImageParameters): Promise<void> {
-    await this.client.send(
-      new PutObjectCommand({
-        Body: image.body,
-        Bucket: this.bucketName,
-        ContentType: image.contentType,
-        Key: createImageKey({ id, keyPrefix: this.keyPrefix }),
-      }),
-    );
+    const key = createImageKey({ id, keyPrefix: this.keyPrefix });
+    console.info("[S3] Saving image", { bucketName: this.bucketName, key });
+    try {
+      await this.client.send(
+        new PutObjectCommand({
+          Body: image.body,
+          Bucket: this.bucketName,
+          ContentType: image.contentType,
+          Key: key,
+        }),
+      );
+      console.info("[S3] Saved image", { bucketName: this.bucketName, key });
+    } catch (error: unknown) {
+      console.error("[S3] Could not save image", { bucketName: this.bucketName, error, key });
+      throw error;
+    }
   }
 }

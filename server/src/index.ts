@@ -8,6 +8,7 @@ import { InMemoryPhotoStorage } from "./in-memory-photo-storage.js";
 import { PhotoStorage } from "./photo-storage.js";
 import { PhotoService } from "./photo-service.js";
 import { registerClientStaticRoutes } from "./routes/client-routes.js";
+import { registerErrorRoutes } from "./routes/error-routes.js";
 import { createPhotoImageUrl } from "./routes/photo-route-paths.js";
 import { registerPhotoRoutes } from "./routes/photo-routes.js";
 import { S3PhotoStorage } from "./s3-photo-storage.js";
@@ -28,22 +29,34 @@ function createPhotoStorage(environment: NodeJS.ProcessEnv): PhotoStorage {
   const bucketName = environment.AWS_S3_BUCKET_NAME?.trim();
 
   if (bucketName === undefined || bucketName === "") {
+    console.warn("[Storage] Using in-memory photo storage because AWS_S3_BUCKET_NAME is not configured.");
     return new InMemoryPhotoStorage();
   }
 
   const endpoint = environment.AWS_S3_ENDPOINT?.trim();
   const forcePathStyle = environment.AWS_S3_FORCE_PATH_STYLE === "true";
+  const region = environment.AWS_S3_REGION?.trim() || defaultS3Region;
+  const keyPrefix = environment.AWS_S3_KEY_PREFIX?.trim() || defaultS3KeyPrefix;
+
+  console.info("[Storage] Configuring S3 photo storage", {
+    bucketName,
+    credentialSource: "AWS SDK default credential provider chain",
+    endpoint: endpoint === "" ? "AWS default endpoint" : endpoint,
+    forcePathStyle,
+    keyPrefix,
+    region,
+  });
 
   const client = new S3Client({
     endpoint: endpoint === "" ? undefined : endpoint,
     forcePathStyle,
-    region: environment.AWS_S3_REGION?.trim() || defaultS3Region,
+    region,
   });
 
   return new S3PhotoStorage({
     bucketName,
     client,
-    keyPrefix: environment.AWS_S3_KEY_PREFIX?.trim() || defaultS3KeyPrefix,
+    keyPrefix,
   });
 }
 
@@ -70,6 +83,8 @@ app.use(express.json({ limit: "8mb" }));
 registerPhotoRoutes({ app, service });
 
 registerClientStaticRoutes({ app, clientBuildDirectory });
+
+registerErrorRoutes({ app });
 
 /** Starts and explicitly retains the local HTTP server process. */
 function startServer(): Server {
