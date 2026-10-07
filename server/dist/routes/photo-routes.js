@@ -1,3 +1,4 @@
+import { compressImage } from "../image-compression.js";
 import { decodeImageDataUrl } from "../image-data-url.js";
 import { createPhotoImageRoute, createPhotoRoute, photoApiPrefix, } from "./photo-route-paths.js";
 /** Registers the HTTP adapter for all gallery-photo operations. */
@@ -41,7 +42,7 @@ function createCreatePhotoHandler(service) {
     return async (request, response) => {
         try {
             response.status(201).json(await service.create({
-                image: decodeImageDataUrl(request.body.imageUrl.trim()),
+                image: await compressImage(decodeImageDataUrl(request.body.imageUrl.trim())),
                 title: request.body.title,
             }));
         }

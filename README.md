@@ -7,6 +7,7 @@ A small full-stack image gallery study project. Upload an image, give it a title
 - Responsive photo-card grid
 - Search photos by title
 - Upload images with an immediate preview
+- Server-side image compression to WebP, capped at 512×512 pixels
 - Delete photos
 - Backend-powered list, create, delete, and get-by-ID operations
 

@@ -1,4 +1,5 @@
 import { Express, Request, RequestHandler, Response } from "express";
+import { compressImage } from "../image-compression.js";
 import { decodeImageDataUrl } from "../image-data-url.js";
 import { PhotoService } from "../photo-service.js";
 import { CreatePhotoInput } from "../types.js";
@@ -62,7 +63,7 @@ function createCreatePhotoHandler(service: PhotoService): RequestHandler<unknown
   ): Promise<void> => {
     try {
       response.status(201).json(await service.create({
-        image: decodeImageDataUrl(request.body.imageUrl.trim()),
+        image: await compressImage(decodeImageDataUrl(request.body.imageUrl.trim())),
         title: request.body.title,
       }));
     } catch (error: unknown) {
