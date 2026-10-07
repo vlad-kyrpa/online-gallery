@@ -25,10 +25,3 @@ export interface PhotoIndex {
   find(id: PhotoId): PhotoEntity | undefined;
   findAll(): ReadonlyArray<PhotoEntity>;
 }
-
-/** Defines the binary-image storage boundary independently of the index. */
-export interface PhotoStorage {
-  delete(id: PhotoId): boolean;
-  find(id: PhotoId): string | undefined;
-  save(parameters: { id: PhotoId; imageUrl: string }): void;
-}

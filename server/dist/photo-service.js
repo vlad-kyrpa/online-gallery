@@ -1,43 +1,48 @@
 /** Coordinates photo metadata indexing with actual image storage. */
 export class PhotoService {
+    createImageUrl;
     createId;
     index;
     storage;
     /** Receives independent index, storage, and identifier dependencies. */
-    constructor({ createId, index, storage }) {
+    constructor({ createId, createImageUrl, index, storage }) {
         this.createId = createId;
+        this.createImageUrl = createImageUrl;
         this.index = index;
         this.storage = storage;
     }
     /** Saves image data and metadata together under one generated id. */
-    create(input) {
+    async create(input) {
         const title = input.title.trim();
-        const imageUrl = input.imageUrl.trim();
-        if (title === "" || imageUrl === "")
-            throw new Error("A title and image URL are required.");
+        if (title === "")
+            throw new Error("A title is required.");
         const id = this.createId();
         const photo = { id, title };
-        this.storage.save({ id, imageUrl });
+        await this.storage.save({ id, image: input.image });
         this.index.create(photo);
-        return { ...photo, imageUrl };
+        return this.toPhoto(photo);
     }
     /** Removes metadata and its corresponding image payload. */
-    delete(id) {
+    async delete(id) {
         const wasIndexed = this.index.delete(id);
-        this.storage.delete(id);
+        await this.storage.delete(id);
         return wasIndexed;
     }
-    /** Retrieves one photo by combining its metadata and stored image payload. */
-    find(id) {
+    /** Retrieves one photo's metadata and its stable image-asset endpoint. */
+    async find(id) {
         const photo = this.index.find(id);
-        const imageUrl = this.storage.find(id);
-        return photo === undefined || imageUrl === undefined ? undefined : { ...photo, imageUrl };
+        return photo === undefined ? undefined : this.toPhoto(photo);
     }
-    /** Combines indexed metadata with separately stored image payloads. */
-    findAll() {
-        return this.index.findAll().flatMap((photo) => {
-            const imageUrl = this.storage.find(photo.id);
-            return imageUrl === undefined ? [] : [{ ...photo, imageUrl }];
-        });
+    /** Lists metadata with image-asset endpoints without downloading image bytes. */
+    async findAll() {
+        return this.index.findAll().map((photo) => this.toPhoto(photo));
+    }
+    /** Retrieves the raw image asset only when its metadata record still exists. */
+    async findImage(id) {
+        return this.index.find(id) === undefined ? undefined : this.storage.read(id);
+    }
+    /** Builds the public API representation without coupling storage to routing. */
+    toPhoto(photo) {
+        return { ...photo, imageUrl: this.createImageUrl(photo.id) };
     }
 }
