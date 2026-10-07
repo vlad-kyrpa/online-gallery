@@ -15,9 +15,11 @@ Retrieve the Docker Hub token from Secrets Manager and send it to Docker through
 TOKEN="$(aws secretsmanager get-secret-value \
   --secret-id online-gallery-dockerhub-pull \
   --query SecretString \
-  --output text)"
+  --output text | jq -r '."online-gallery-dockerhub-pull"')"
 
-printf '%s' "$TOKEN" | docker login \
+echo "Token length: ${#TOKEN}"
+
+printf '%s' "$TOKEN" | sudo docker login \
   --username quoterlock \
   --password-stdin
 
@@ -27,8 +29,8 @@ unset TOKEN
 Pull and run the image:
 
 ```bash
-docker compose pull
-docker compose up -d
+sudo docker compose pull
+sudo docker compose up -d
 ```
 
 The app is available on port `8080`:
@@ -39,22 +41,13 @@ Run these commands from the directory containing `docker-compose.yaml`.
 
 ```bash
 # Follow application logs in real time.
-docker compose logs --follow
+sudo docker compose logs --follow
 
 # Show the last 100 lines, then keep following new entries.
-docker compose logs --follow --tail 100
+sudo docker compose logs --follow --tail 100
 
 # Confirm the container is running and inspect published ports.
-docker compose ps
-```
-
-## Deploy an updated image
-
-After a newer `latest` image is pushed to Docker Hub, run:
-
-```bash
-docker compose pull
-docker compose up -d
+sudo docker compose ps
 ```
 
 If you do not need to pull private images again immediately, remove the retained Docker login credential:
