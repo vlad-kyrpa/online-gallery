@@ -37,6 +37,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --chown=node:node --from=build /app/server/dist ./dist
 COPY --chown=node:node --from=build /app/client/build ../client/build
 COPY --chown=node:node --from=build /tmp/rds-global-bundle.pem /app/certificates/rds-global-bundle.pem
+COPY --chown=node:node --from=build /app/server/drizzle ./drizzle
 
 USER node
 

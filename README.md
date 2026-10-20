@@ -61,6 +61,14 @@ Copy `server/.env.example` when setting up another environment, then choose the 
 
 Build from the repository root. The Dockerfile lives in `server/`, while the repository root remains the build context so both the React client and Express server are available to the build.
 
+Before building, generate migrations for any schema changes and commit the resulting `server/drizzle/` files. The production image includes this directory, and the server applies its migrations during startup.
+
+```bash
+cd server
+npm run db:generate
+cd ..
+```
+
 ```bash
 docker build --file server/Dockerfile --tag online-gallery:latest .
 ```
