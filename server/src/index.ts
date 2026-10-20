@@ -108,6 +108,7 @@ async function createProductionPhotoIndex({
 }: CreateProductionPhotoIndexParameters): Promise<PhotoIndexResources> {
   const secretId =
     environment.AWS_DATABASE_SECRET_ID?.trim() || DATABASE_SECRET_ID_FALLBACK;
+  console.info("[Database] Loading RDS credentials from Secrets Manager");
   const credentials = await getProductionDatabaseCredentials(secretId);
 
   if (credentials === undefined) {
@@ -121,7 +122,14 @@ async function createProductionPhotoIndex({
     throw new Error("AWS_RDS_CA_CERTIFICATE_PATH must be set outside development");
   }
 
+  console.info("[Database] Loading the RDS TLS certificate bundle");
   const certificateAuthority = await readFile(certificatePath, "utf8");
+  console.info("[Database] Connecting to RDS", {
+    database: credentials.database,
+    host: credentials.host,
+    port: credentials.port,
+    tls: true,
+  });
   const pool = new Pool({
     database: credentials.database,
     host: credentials.host,
@@ -133,16 +141,22 @@ async function createProductionPhotoIndex({
     },
     user: credentials.username,
   });
+  pool.on("error", (error) => {
+    console.error("[Database] Idle RDS connection failed", error);
+  });
 
   try {
     const database = drizzle({ client: pool, schema: databaseSchema });
+    console.info("[Database] Applying migrations");
     await migrate(database, { migrationsFolder: migrationsDirectory });
+    console.info("[Database] RDS is ready");
 
     return {
       close: (): Promise<void> => pool.end(),
       index: new DrizzlePhotoIndex({ database }),
     };
   } catch (error: unknown) {
+    console.error("[Database] RDS connection or migration failed", error);
     await pool.end();
     throw error;
   }
