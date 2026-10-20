@@ -130,3 +130,27 @@ For an S3-compatible provider such as MinIO, also set its endpoint and path-styl
 AWS_S3_ENDPOINT=http://localhost:9000
 AWS_S3_FORCE_PATH_STYLE=true
 ```
+
+### RDS database
+
+Outside development, the server loads PostgreSQL credentials from AWS Secrets Manager and connects to RDS with TLS verification enabled. The secret must contain JSON in this shape:
+
+```json
+{
+  "host": "gallery.example.eu-north-1.rds.amazonaws.com",
+  "port": 5432,
+  "dbname": "online_gallery",
+  "username": "gallery_app",
+  "password": "replace-with-the-database-password"
+}
+```
+
+Set the non-secret secret identifier when it differs from the default `online-gallery-db-creds`:
+
+```env
+AWS_DATABASE_SECRET_ID=online-gallery-db-creds
+```
+
+The EC2 instance role must allow `secretsmanager:GetSecretValue` for this secret. The same AWS SDK credential chain used for S3 retrieves the temporary instance-role credentials; do not place AWS access keys or the database password in the container configuration.
+
+The production Docker image includes the Amazon RDS CA bundle and sets `AWS_RDS_CA_CERTIFICATE_PATH` automatically. Allow the EC2 instance's security group to reach the RDS security group on PostgreSQL port `5432`. The server applies the committed Drizzle migrations during startup.
