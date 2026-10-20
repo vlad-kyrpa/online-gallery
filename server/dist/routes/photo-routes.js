@@ -1,12 +1,13 @@
-import { compressImage } from "../image-compression.js";
-import { decodeImageDataUrl } from "../image-data-url.js";
-import { createPhotoImageRoute, createPhotoRoute, photoApiPrefix, } from "./photo-route-paths.js";
+import { PHOTO_API_PREFIX } from "../constants.js";
+import { compressImage } from "../services/image-compression.js";
+import { decodeImageDataUrl } from "../services/image-data-url.js";
+import { createPhotoImageRoute, createPhotoRoute, } from "./photo-route-paths.js";
 /** Registers the HTTP adapter for all gallery-photo operations. */
-export function registerPhotoRoutes({ app, service }) {
-    app.get(photoApiPrefix, createListPhotosHandler(service));
+export function registerPhotoRoutes({ app, service, }) {
+    app.get(PHOTO_API_PREFIX, createListPhotosHandler(service));
     app.get(createPhotoImageRoute(), createGetImageHandler(service));
     app.get(createPhotoRoute(), createGetPhotoHandler(service));
-    app.post(photoApiPrefix, createCreatePhotoHandler(service));
+    app.post(PHOTO_API_PREFIX, createCreatePhotoHandler(service));
     app.delete(createPhotoRoute(), createDeletePhotoHandler(service));
 }
 /** Creates the handler that lists photo metadata and image-asset URLs. */

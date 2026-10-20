@@ -108,12 +108,13 @@ async function createProductionPhotoIndex({
 }: CreateProductionPhotoIndexParameters): Promise<PhotoIndexResources> {
   const secretId =
     environment.AWS_DATABASE_SECRET_ID?.trim() || DATABASE_SECRET_ID_FALLBACK;
-  const credentialsResult = await getProductionDatabaseCredentials(secretId);
+  const credentials = await getProductionDatabaseCredentials(secretId);
 
-  if (credentialsResult.type === "database-credentials-failure") {
-    throw new Error(credentialsResult.message);
+  if (credentials === undefined) {
+    throw new Error(`Database secret was not found: ${secretId}`);
   }
 
+  // The RDS CA bundle lets PostgreSQL verify the database server during TLS.
   const certificatePath = environment.AWS_RDS_CA_CERTIFICATE_PATH?.trim();
 
   if (certificatePath === undefined || certificatePath === "") {
@@ -122,15 +123,15 @@ async function createProductionPhotoIndex({
 
   const certificateAuthority = await readFile(certificatePath, "utf8");
   const pool = new Pool({
-    database: credentialsResult.credentials.database,
-    host: credentialsResult.credentials.host,
-    password: credentialsResult.credentials.password,
-    port: credentialsResult.credentials.port,
+    database: credentials.database,
+    host: credentials.host,
+    password: credentials.password,
+    port: credentials.port,
     ssl: {
       ca: certificateAuthority,
       rejectUnauthorized: true,
     },
-    user: credentialsResult.credentials.username,
+    user: credentials.username,
   });
 
   try {

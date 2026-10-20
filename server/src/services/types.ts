@@ -9,22 +9,8 @@ export interface DatabaseCredentials {
   readonly username: string;
 }
 
-/** Describes why the RDS credentials secret could not be loaded or validated. */
-export interface DatabaseCredentialsFailure {
-  readonly type: "database-credentials-failure";
-  readonly message: string;
-}
-
-/** Holds successfully validated RDS credentials. */
-export interface DatabaseCredentialsSuccess {
-  readonly type: "database-credentials-success";
-  readonly credentials: DatabaseCredentials;
-}
-
-/** Represents the safe outcome of loading RDS credentials from AWS Secrets Manager. */
-export type DatabaseCredentialsResult =
-  | DatabaseCredentialsFailure
-  | DatabaseCredentialsSuccess;
+/** Holds RDS credentials when their backing secret exists. */
+export type DatabaseCredentialsResult = DatabaseCredentials | undefined;
 
 /** Represents the complete photo returned to API consumers. */
 export interface Photo extends PhotoEntity {
