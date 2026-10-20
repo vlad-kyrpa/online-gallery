@@ -1,4 +1,4 @@
-import { getSecret } from "./aws/workload-credentials-provider.js";
+import { getSecret } from "./aws/secrets-manager.js";
 import { DatabaseCredentials, DatabaseCredentialsResult } from "./types.js";
 
 type JsonObject = Record<string, unknown>;
