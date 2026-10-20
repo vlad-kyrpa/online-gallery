@@ -5,11 +5,14 @@ import {
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import {
+  DEFAULT_IMAGE_CONTENT_TYPE,
+  S3_MISSING_OBJECT_NAMES,
+} from "../../constants.js";
+import {
   PhotoStorage,
   SavePhotoImageParameters,
   StoredImage,
 } from "./photo-storage.js";
-import { PhotoId } from "./types.js";
 
 /** Defines the S3 operations used by the S3 image storage adapter. */
 export interface S3CommandClient {
@@ -29,15 +32,12 @@ export interface S3StorageConfig {
   keyPrefix: string;
 }
 
-const defaultImageContentType = "application/octet-stream";
-const s3MissingObjectNames = new Set(["NoSuchKey", "NotFound"]);
-
 /** Builds a stable, namespaced S3 key from a gallery photo id. */
 function createImageKey({
   id,
   keyPrefix,
 }: {
-  id: PhotoId;
+  id: string;
   keyPrefix: string;
 }): string {
   return `${keyPrefix}/${id}`;
@@ -45,7 +45,7 @@ function createImageKey({
 
 /** Identifies S3 errors that mean an object was already absent. */
 function isMissingS3Object(error: unknown): boolean {
-  return error instanceof Error && s3MissingObjectNames.has(error.name);
+  return error instanceof Error && S3_MISSING_OBJECT_NAMES.includes(error.name);
 }
 
 /** Narrows an SDK response body to its byte-conversion capability. */
@@ -88,7 +88,7 @@ export class S3PhotoStorage implements PhotoStorage {
   }
 
   /** Deletes the stored object and treats an absent object as a normal result. */
-  public async delete(id: PhotoId): Promise<boolean> {
+  public async delete(id: string): Promise<boolean> {
     const key = createImageKey({ id, keyPrefix: this.keyPrefix });
     console.info("[S3] Deleting image", { bucketName: this.bucketName, key });
     try {
@@ -101,7 +101,11 @@ export class S3PhotoStorage implements PhotoStorage {
       console.info("[S3] Deleted image", { bucketName: this.bucketName, key });
       return true;
     } catch (error: unknown) {
-      console.error("[S3] Could not delete image", { bucketName: this.bucketName, error, key });
+      console.error("[S3] Could not delete image", {
+        bucketName: this.bucketName,
+        error,
+        key,
+      });
       if (isMissingS3Object(error)) {
         return false;
       }
@@ -112,7 +116,10 @@ export class S3PhotoStorage implements PhotoStorage {
   /** Lists stored photo identifiers in the configured key namespace. */
   public async list(): Promise<string[]> {
     const keyPrefix = `${this.keyPrefix}/`;
-    console.info("[S3] Listing images", { bucketName: this.bucketName, keyPrefix });
+    console.info("[S3] Listing images", {
+      bucketName: this.bucketName,
+      keyPrefix,
+    });
     try {
       const result = await this.client.send(
         new ListObjectsV2Command({
@@ -129,22 +136,33 @@ export class S3PhotoStorage implements PhotoStorage {
         const key = object.Key;
 
         if (key === undefined) {
-          console.warn("[S3] Listed object has no key", { bucketName: this.bucketName, keyPrefix });
+          console.warn("[S3] Listed object has no key", {
+            bucketName: this.bucketName,
+            keyPrefix,
+          });
           return [];
         }
 
         return key.startsWith(keyPrefix) ? [key.slice(keyPrefix.length)] : [];
       });
-      console.info("[S3] Listed images", { bucketName: this.bucketName, count: photoIds.length, keyPrefix });
+      console.info("[S3] Listed images", {
+        bucketName: this.bucketName,
+        count: photoIds.length,
+        keyPrefix,
+      });
       return photoIds;
     } catch (error: unknown) {
-      console.error("[S3] Could not list images", { bucketName: this.bucketName, error, keyPrefix });
+      console.error("[S3] Could not list images", {
+        bucketName: this.bucketName,
+        error,
+        keyPrefix,
+      });
       throw error;
     }
   }
 
   /** Downloads an image as raw bytes and its stored content type. */
-  public async read(id: PhotoId): Promise<StoredImage | undefined> {
+  public async read(id: string): Promise<StoredImage | undefined> {
     const key = createImageKey({ id, keyPrefix: this.keyPrefix });
     console.info("[S3] Reading image", { bucketName: this.bucketName, key });
     try {
@@ -160,12 +178,16 @@ export class S3PhotoStorage implements PhotoStorage {
       }
 
       const imageBytes = await result.Body.transformToByteArray();
-      const contentType = result.ContentType || defaultImageContentType;
+      const contentType = result.ContentType || DEFAULT_IMAGE_CONTENT_TYPE;
 
       console.info("[S3] Read image", { bucketName: this.bucketName, key });
       return { body: imageBytes, contentType };
     } catch (error: unknown) {
-      console.error("[S3] Could not read image", { bucketName: this.bucketName, error, key });
+      console.error("[S3] Could not read image", {
+        bucketName: this.bucketName,
+        error,
+        key,
+      });
       if (isMissingS3Object(error)) {
         return undefined;
       }
@@ -188,7 +210,11 @@ export class S3PhotoStorage implements PhotoStorage {
       );
       console.info("[S3] Saved image", { bucketName: this.bucketName, key });
     } catch (error: unknown) {
-      console.error("[S3] Could not save image", { bucketName: this.bucketName, error, key });
+      console.error("[S3] Could not save image", {
+        bucketName: this.bucketName,
+        error,
+        key,
+      });
       throw error;
     }
   }

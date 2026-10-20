@@ -1,9 +1,10 @@
 import sharp from "sharp";
-import { StoredImage } from "./photo-storage.js";
-
-const maximumImageDimension = 512;
-const webpQuality = 82;
-const webpContentType = "image/webp";
+import {
+  MAXIMUM_IMAGE_DIMENSION,
+  WEBP_CONTENT_TYPE,
+  WEBP_QUALITY,
+} from "../constants.js";
+import { StoredImage } from "./photo-storage/photo-storage.js";
 
 /** Resizes an upload for efficient storage while preserving its aspect ratio. */
 export async function compressImage(image: StoredImage): Promise<StoredImage> {
@@ -11,11 +12,11 @@ export async function compressImage(image: StoredImage): Promise<StoredImage> {
     .rotate()
     .resize({
       fit: "inside",
-      height: maximumImageDimension,
+      height: MAXIMUM_IMAGE_DIMENSION,
       withoutEnlargement: true,
-      width: maximumImageDimension,
+      width: MAXIMUM_IMAGE_DIMENSION,
     })
-    .webp({ quality: webpQuality })
+    .webp({ quality: WEBP_QUALITY })
     .toBuffer();
-  return { body, contentType: webpContentType };
+  return { body, contentType: WEBP_CONTENT_TYPE };
 }

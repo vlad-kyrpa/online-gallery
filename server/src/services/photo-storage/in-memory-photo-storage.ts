@@ -1,12 +1,15 @@
-import { PhotoStorage, SavePhotoImageParameters, StoredImage } from "./photo-storage.js";
-import { PhotoId } from "./types.js";
+import {
+  PhotoStorage,
+  SavePhotoImageParameters,
+  StoredImage,
+} from "./photo-storage.js";
 
 /** Keeps actual image data separately from the metadata index. */
 export class InMemoryPhotoStorage implements PhotoStorage {
-  private readonly images = new Map<PhotoId, StoredImage>();
+  private readonly images = new Map<string, StoredImage>();
 
   /** Removes the image associated with a photo id. */
-  public async delete(id: PhotoId): Promise<boolean> {
+  public async delete(id: string): Promise<boolean> {
     return this.images.delete(id);
   }
 
@@ -16,7 +19,7 @@ export class InMemoryPhotoStorage implements PhotoStorage {
   }
 
   /** Looks up image data without exposing the backing map. */
-  public async read(id: PhotoId): Promise<StoredImage | undefined> {
+  public async read(id: string): Promise<StoredImage | undefined> {
     return this.images.get(id);
   }
 
